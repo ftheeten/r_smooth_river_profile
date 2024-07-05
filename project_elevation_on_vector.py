@@ -28,10 +28,14 @@ LEN_SEG=100
 FIELD_ALT_1="Z"
 FIELD_ALT_1_END="Z_END"
 FIELD_LENGTH_1="length"
-
+FIELD_NAME="NAME"
+NAME_1="S-W - Kwilou-Niari"
+NAME_2="Crestline"
+NAME_3="N-E - Lefini"
 CUM_FIELD='DIST_SURF'
 
-def handle_frame(p_df, z_field_start, cum_field_name, smooth=True, color='DarkBlue', mode="begin", offset=0):
+
+def handle_frame(p_df, z_field_start, cum_field_name, field_name, name, smooth=True, color='DarkBlue', mode="begin"):
     merged=None
     first=p_df.iloc[0]
     first_z=first[z_field_start]
@@ -72,8 +76,12 @@ def handle_frame(p_df, z_field_start, cum_field_name, smooth=True, color='DarkBl
     if (mode=="begin" and first_z>last_z) or (mode=="end" and first_z<last_z):
         p_df[cum_field_name]=abs(p_df[cum_field_name]-len_cum)
         p_df=p_df.iloc[::-1]
-    p_df[cum_field_name]=p_df[cum_field_name]+offset
+    p_df[cum_field_name]=p_df[cum_field_name]
+    #if smooth:
+    #    p_df = p_df.sort_values(by=[z_field_start], ascending=True)
+    #else:
     p_df = p_df.sort_values(by=[cum_field_name], ascending=True)
+    p_df[field_name]=name        
     ax1 = p_df.plot.scatter(x=cum_field_name, y="ORIGINAL_Z", c="black")
     ax1.plot(p_df[cum_field_name], p_df[z_field_start], label='monotonic fit', c=color)
     plt.show()
@@ -180,11 +188,11 @@ def handle_river(river_file, crs, len_seg, x_field, y_field_start, y_field_end, 
         #last_z=last[y_field_end]
         #last_x=last[x_field]
         last_x=last["x_end"]
-        last_y=last["y_end"]
+        #last_y=last["y_end"]
         last_z=last["Z_END"]
         #print('first x:'+str(first_x))
         #print('last x:'+str(last_x))
-        returned.loc[len(returned)] = [last_x, last_y, None, None, last_z, None, 0]
+        #returned.loc[len(returned)] = [last_x, last_y, None, None, last_z, None, 0]
         if first_z<last_z: #(mode=="begin" and first_z<last_z) or (mode=="end" and first_z>last_z) :
             returned=returned.iloc[::-1]
             
@@ -208,30 +216,42 @@ def get_offset(p_pnd, p_dist_field):
         returned=last[p_dist_field]
     return returned
 
-def concatenate_df(df_1, df2):
+def concatenate_df(df_1, df_2,  cum_field, field_length, name_field):    
     last=df_1.iloc[-1]
-    df2.loc[-1]=last
-    return df2
+    first=df_2.iloc[0]
+    last[name_field]=first[name_field]
+    offset=last[cum_field]+last[field_length]
+    df_2[cum_field]=df_2[cum_field]+offset
+    df_2.iloc[-1]=last
+    df_2.index = df_2.index + 1  # shifting index
+    tmp=pnd.concat([df_1, df_2], axis=0, ignore_index=True)
+    tmp=tmp.sort_values(by=[cum_field], ascending=True)
+    return tmp
     
 def go():
     df1=handle_river(ORIGINAL_FILE_1, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    merged_1=handle_frame(df1, FIELD_ALT_1,  CUM_FIELD, True, 'DarkBlue', "begin")
+    merged_1=handle_frame(df1, FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_1, True, 'DarkBlue', "begin")
     #print(merged_1)
-    offset_1=get_offset(merged_1, CUM_FIELD)
-    print("offset1")
-    print(offset_1)
+    #offset_1=get_offset(merged_1, CUM_FIELD)
+    #print("offset1")
+    #print(offset_1)
     df2=handle_river(ORIGINAL_FILE_2, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    merged_2=handle_frame(df2,  FIELD_ALT_1,  CUM_FIELD, False, 'Black', "top", offset_1)
-    merged_2=concatenate_df(merged_1, merged_2)
-    offset_2=get_offset(merged_2, CUM_FIELD)
-    print("offset2")
-    print(offset_2)
+    merged_2=handle_frame(df2,  FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_2, False, 'Black', "top")
+    merged_2=concatenate_df(merged_1, merged_2, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME)
+    #offset_2=get_offset(merged_2, CUM_FIELD)
+    #print("offset2")
+    #print(offset_2)
     df3=handle_river(ORIGINAL_FILE_3, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    merged_3=handle_frame(df3, FIELD_ALT_1,  CUM_FIELD, True, 'Red',  "end", offset_2)
-    merged_3=concatenate_df(merged_2, merged_3)
+    merged_3=handle_frame(df3, FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_3, True, 'Red',  "end")
+    df_final=concatenate_df(merged_2, merged_3, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME)
+    print(df_final)
+    first=df_final[df_final[FIELD_NAME]==NAME_1]
+    second=df_final[df_final[FIELD_NAME]==NAME_2]
+    third=df_final[df_final[FIELD_NAME]==NAME_3]
+    
     fig_final, ax_final = plt.subplots()
-    ax_final.plot(merged_1[CUM_FIELD], merged_1[FIELD_ALT_1], label='monotonic fit', c="DarkBlue")
-    ax_final.plot(merged_2[CUM_FIELD], merged_2[FIELD_ALT_1], label='monotonic fit', c="Black", linestyle="dashed")
-    ax_final.plot(merged_3[CUM_FIELD], merged_3[FIELD_ALT_1], label='monotonic fit', c="Red")
+    ax_final.plot(first[CUM_FIELD], first[FIELD_ALT_1], label='monotonic fit', c="DarkBlue")
+    ax_final.plot(second[CUM_FIELD], second[FIELD_ALT_1], label='monotonic fit', c="Black", linestyle="dashed")
+    ax_final.plot(third[CUM_FIELD], third[FIELD_ALT_1], label='monotonic fit', c="Red")
     plt.show()
 go()
