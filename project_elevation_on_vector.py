@@ -18,9 +18,9 @@ os.environ["PROJ_LIB"]="C:\\OSGeo4W\\share\\proj"
 
 
 #ORIGINAL_FILE="D:\\DivaGisData\\CongoBrazza_Fleur\\affluent_intermediaire_sud.gpkg"
-ORIGINAL_FILE_1="C:\\DEV\\CongoBrazza_Fleur\\makou_sud_dissolved.gpkg"
-ORIGINAL_FILE_2="C:\\DEV\\CongoBrazza_Fleur\\passage_fleur_no_1.gpkg"
-ORIGINAL_FILE_3="C:\\DEV\\CongoBrazza_Fleur\\makou_nord_altitude_100m.gpkg"
+ORIGINAL_FILE_1="C:\\DEV\\CongoBrazza_Fleur\\passage_est_affluent_ndoue.gpkg"
+ORIGINAL_FILE_2="C:\\DEV\\CongoBrazza_Fleur\\passage_fleur_no_3.gpkg"
+ORIGINAL_FILE_3="C:\\DEV\\CongoBrazza_Fleur\\fleur_passage_no3_affluent_nord.gpkg"
 RASTER="C:\\DEV\\CongoBrazza_Fleur\\fusion_s03E014s04e014_lefini_kouilou.tif"
 CRS=32733
 LEN_SEG=100
@@ -29,10 +29,11 @@ FIELD_ALT_1="Z"
 FIELD_ALT_1_END="Z_END"
 FIELD_LENGTH_1="length"
 FIELD_NAME="NAME"
-NAME_1="S-W - Kwilou-Niari"
+NAME_1="Affluent Ndoue"
 NAME_2="Crestline"
-NAME_3="N-E - Lefini"
+NAME_3="Affluent Lefini"
 CUM_FIELD='DIST_SURF'
+TITLE="Profile line c"
 
 
 def handle_frame(p_df, z_field_start, cum_field_name, field_name, name, smooth=True, color='DarkBlue', mode="begin"):
@@ -216,13 +217,16 @@ def get_offset(p_pnd, p_dist_field):
         returned=last[p_dist_field]
     return returned
 
-def concatenate_df(df_1, df_2,  cum_field, field_length, name_field):    
+def concatenate_df(df_1, df_2,  cum_field, field_length, name_field, align_alt=False, z_field=""):    
     last=df_1.iloc[-1]
     first=df_2.iloc[0]
     last[name_field]=first[name_field]
     offset=last[cum_field]+last[field_length]
     df_2[cum_field]=df_2[cum_field]+offset
+    
     df_2.iloc[-1]=last
+    if align_alt:
+        df_2.loc[df_2[z_field]<last[z_field], z_field]=last[z_field]
     df_2.index = df_2.index + 1  # shifting index
     tmp=pnd.concat([df_1, df_2], axis=0, ignore_index=True)
     tmp=tmp.sort_values(by=[cum_field], ascending=True)
@@ -236,8 +240,8 @@ def go():
     #print("offset1")
     #print(offset_1)
     df2=handle_river(ORIGINAL_FILE_2, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    merged_2=handle_frame(df2,  FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_2, False, 'Black', "top")
-    merged_2=concatenate_df(merged_1, merged_2, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME)
+    merged_2=handle_frame(df2,  FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_2, False, 'Black', "begin")
+    merged_2=concatenate_df(merged_1, merged_2, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME, True, FIELD_ALT_1)
     #offset_2=get_offset(merged_2, CUM_FIELD)
     #print("offset2")
     #print(offset_2)
@@ -250,8 +254,17 @@ def go():
     third=df_final[df_final[FIELD_NAME]==NAME_3]
     
     fig_final, ax_final = plt.subplots()
-    ax_final.plot(first[CUM_FIELD], first[FIELD_ALT_1], label='monotonic fit', c="DarkBlue")
-    ax_final.plot(second[CUM_FIELD], second[FIELD_ALT_1], label='monotonic fit', c="Black", linestyle="dashed")
-    ax_final.plot(third[CUM_FIELD], third[FIELD_ALT_1], label='monotonic fit', c="Red")
+    ax_final.plot(first[CUM_FIELD], first[FIELD_ALT_1], label=NAME_1, c="DarkBlue")
+    ax_final.plot(second[CUM_FIELD], second[FIELD_ALT_1], label=NAME_2, c="Black", linestyle="dashed")
+    ax_final.plot(third[CUM_FIELD], third[FIELD_ALT_1], label=NAME_3, c="Red")
+    plt.xlabel("Distance on map (m)")
+    plt.ylabel("Elevation (m)")
+    plt.legend(loc="best")
+    plt.title(TITLE)
+    first_x=round(df_final.iloc[0]["x"],4)
+    first_y=round(df_final.iloc[0]["y"],4)
+    last_x=round(df_final.iloc[-1]["x_end"],4)
+    last_y=round(df_final.iloc[-1]["y_end"],4)
+    plt.figtext(0.5, 0.01, "Begin : lat "+str(first_x)+" lon"+str(first_y)+" "+"End : lat "+str(last_x)+" lon"+str(last_y), ha="center")
     plt.show()
 go()
