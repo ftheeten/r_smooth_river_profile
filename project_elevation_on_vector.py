@@ -18,9 +18,9 @@ os.environ["PROJ_LIB"]="C:\\OSGeo4W\\share\\proj"
 
 
 #ORIGINAL_FILE="D:\\DivaGisData\\CongoBrazza_Fleur\\affluent_intermediaire_sud.gpkg"
-ORIGINAL_FILE_1="C:\\DEV\\CongoBrazza_Fleur\\passage_est_affluent_ndoue.gpkg"
-ORIGINAL_FILE_2="C:\\DEV\\CongoBrazza_Fleur\\passage_fleur_no_3.gpkg"
-ORIGINAL_FILE_3="C:\\DEV\\CongoBrazza_Fleur\\fleur_passage_no3_affluent_nord.gpkg"
+ORIGINAL_FILE_1="C:\\DEV\\CongoBrazza_Fleur\\intermediaire_sud_altitude_1000m.gpkg"
+ORIGINAL_FILE_2="C:\\DEV\\CongoBrazza_Fleur\\passage_fleur_no_2.gpkg"
+ORIGINAL_FILE_3="C:\\DEV\\CongoBrazza_Fleur\\intermediaire_nord_altitude_1000m.gpkg"
 RASTER="C:\\DEV\\CongoBrazza_Fleur\\fusion_s03E014s04e014_lefini_kouilou.tif"
 CRS=32733
 LEN_SEG=100
@@ -30,10 +30,10 @@ FIELD_ALT_1_END="Z_END"
 FIELD_LENGTH_1="length"
 FIELD_NAME="NAME"
 NAME_1="Affluent Ndoue"
-NAME_2="Crestline"
+NAME_2="Water divide"
 NAME_3="Affluent Lefini"
 CUM_FIELD='DIST_SURF'
-TITLE="Profile line c"
+TITLE="Profile line b"
 
 
 def handle_frame(p_df, z_field_start, cum_field_name, field_name, name, smooth=True, color='DarkBlue', mode="begin"):
@@ -217,16 +217,34 @@ def get_offset(p_pnd, p_dist_field):
         returned=last[p_dist_field]
     return returned
 
-def concatenate_df(df_1, df_2,  cum_field, field_length, name_field, align_alt=False, z_field=""):    
+def concatenate_df(df_1, df_2,  cum_field, field_length, name_field, treshold_alt=False, z_field="", treshold_elevation=0):    
     last=df_1.iloc[-1]
     first=df_2.iloc[0]
+    last_df2=df_2.iloc[-1]
+    x_y_end_1=Point(last["x"], last["y"])
+    x_y_begin_2=Point(first["x"], first["y"])
+    x_y_end_2=Point(last_df2["x"], last_df2["y"])
+    distance1=distance(x_y_end_1, x_y_begin_2)
+    distance2=distance(x_y_end_1, x_y_end_2)
+    print("distance1=")
+    print(distance1)
+    print("distance2=")
+    print(distance2)
+    if distance2 < distance1:
+        len_cum=df_2[cum_field].max()
+        df_2[cum_field]=abs(df_2[cum_field]-len_cum)
+        df_2=df_2.iloc[::-1]
+        df_2=df_2.sort_values(by=[cum_field], ascending=True)    
+    
+    
     last[name_field]=first[name_field]
     offset=last[cum_field]+last[field_length]
     df_2[cum_field]=df_2[cum_field]+offset
-    
     df_2.iloc[-1]=last
-    if align_alt:
-        df_2.loc[df_2[z_field]<last[z_field], z_field]=last[z_field]
+    if treshold_alt:
+        #df_2.loc[df_2[z_field]<last[z_field], z_field]=last[z_field]
+        #ref_elevation=min(df_2[z_field].min(), df_2[z_field].min())
+        df_2.loc[df_2[z_field]<treshold_elevation, z_field]=treshold_elevation
     df_2.index = df_2.index + 1  # shifting index
     tmp=pnd.concat([df_1, df_2], axis=0, ignore_index=True)
     tmp=tmp.sort_values(by=[cum_field], ascending=True)
@@ -234,19 +252,12 @@ def concatenate_df(df_1, df_2,  cum_field, field_length, name_field, align_alt=F
     
 def go():
     df1=handle_river(ORIGINAL_FILE_1, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    merged_1=handle_frame(df1, FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_1, True, 'DarkBlue', "begin")
-    #print(merged_1)
-    #offset_1=get_offset(merged_1, CUM_FIELD)
-    #print("offset1")
-    #print(offset_1)
     df2=handle_river(ORIGINAL_FILE_2, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    merged_2=handle_frame(df2,  FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_2, False, 'Black', "begin")
-    merged_2=concatenate_df(merged_1, merged_2, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME, True, FIELD_ALT_1)
-    #offset_2=get_offset(merged_2, CUM_FIELD)
-    #print("offset2")
-    #print(offset_2)
     df3=handle_river(ORIGINAL_FILE_3, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
+    merged_1=handle_frame(df1, FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_1, True, 'DarkBlue', "begin")
+    merged_2=handle_frame(df2,  FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_2, False, 'Black', "end")
     merged_3=handle_frame(df3, FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_3, True, 'Red',  "end")
+    merged_2=concatenate_df(merged_1, merged_2, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME, True, FIELD_ALT_1, min(merged_1[FIELD_ALT_1].max(),merged_3[FIELD_ALT_1].max()))    
     df_final=concatenate_df(merged_2, merged_3, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME)
     print(df_final)
     first=df_final[df_final[FIELD_NAME]==NAME_1]
