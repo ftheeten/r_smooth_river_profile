@@ -32,11 +32,13 @@ FIELD_NAME="NAME"
 NAME_1="Affluent Ndoue"
 NAME_2="Water divide"
 NAME_3="Affluent Lefini"
-CUM_FIELD='DIST_SURF'
+CUMUL_FIELD='DIST_SURF'
 TITLE="Profile line b"
+PLOT_Y_MIN=400
+PLOT_Y_MAX=800
 
 
-def handle_frame(p_df, z_field_start, cum_field_name, field_name, name, smooth=True, color='DarkBlue', mode="begin"):
+def handle_frame(p_df, z_field_start, cumul_field_name, field_name, name, smooth=True, color='DarkBlue', mode="begin"):
     merged=None
     first=p_df.iloc[0]
     first_z=first[z_field_start]
@@ -45,25 +47,25 @@ def handle_frame(p_df, z_field_start, cum_field_name, field_name, name, smooth=T
     last_z=last[z_field_start]
     print("last_z="+str(last_z))
     
-    len_cum=p_df[cum_field_name].max()
+    len_cum=p_df[cumul_field_name].max()
     
 
     if smooth and first_z>last_z:
         print("REVERSE")
         #
         print(len_cum)
-        p_df[cum_field_name]=abs(p_df[cum_field_name]-len_cum)
+        p_df[cumul_field_name]=abs(p_df[cumul_field_name]-len_cum)
         p_df=p_df.iloc[::-1]    
     
     p_df["ORIGINAL_Z"]= p_df[z_field_start]
     if smooth:
-        X= p_df[cum_field_name]
+        X= p_df[cumul_field_name]
         y= p_df[z_field_start]
         gam1 = LinearGAM(s(0, constraints='monotonic_inc')).fit(X, y)
         smoothed=gam1.predict(X)
         
         #ax1.plot(X, smoothed, label='monotonic fit', c='red')
-        #merged=pnd.DataFrame({cum_field_name: X.to_list(), "Z":smoothed })
+        #merged=pnd.DataFrame({cumul_field_name: X.to_list(), "Z":smoothed })
         #merged=p_df
         #print(merged)
         p_df[z_field_start]=smoothed
@@ -73,18 +75,18 @@ def handle_frame(p_df, z_field_start, cum_field_name, field_name, name, smooth=T
     print("first_z="+str(first_z))
     last= p_df.iloc[-1]
     last_z=last[z_field_start]
-    len_cum=p_df[cum_field_name].max()
+    len_cum=p_df[cumul_field_name].max()
     if (mode=="begin" and first_z>last_z) or (mode=="end" and first_z<last_z):
-        p_df[cum_field_name]=abs(p_df[cum_field_name]-len_cum)
+        p_df[cumul_field_name]=abs(p_df[cumul_field_name]-len_cum)
         p_df=p_df.iloc[::-1]
-    p_df[cum_field_name]=p_df[cum_field_name]
+    p_df[cumul_field_name]=p_df[cumul_field_name]
     #if smooth:
     #    p_df = p_df.sort_values(by=[z_field_start], ascending=True)
     #else:
-    p_df = p_df.sort_values(by=[cum_field_name], ascending=True)
+    p_df = p_df.sort_values(by=[cumul_field_name], ascending=True)
     p_df[field_name]=name        
-    ax1 = p_df.plot.scatter(x=cum_field_name, y="ORIGINAL_Z", c="black")
-    ax1.plot(p_df[cum_field_name], p_df[z_field_start], label='monotonic fit', c=color)
+    ax1 = p_df.plot.scatter(x=cumul_field_name, y="ORIGINAL_Z", c="black")
+    ax1.plot(p_df[cumul_field_name], p_df[z_field_start], label='monotonic fit', c=color)
     plt.show()
     return p_df
 
@@ -101,7 +103,7 @@ def line_merge(geom):
     finally:
         return geom
         
-def handle_river(river_file, crs, len_seg, x_field, y_field_start, y_field_end, cum_field_name, fp):
+def handle_river(river_file, crs, len_seg, x_field, y_field_start, y_field_end, cumul_field_name, fp):
     data = gpd.read_file(river_file)
     raster_data = rxr.open_rasterio(fp, masked=True).rio.reproject("epsg:"+str(CRS))
     #data = data.explode()
@@ -197,7 +199,7 @@ def handle_river(river_file, crs, len_seg, x_field, y_field_start, y_field_end, 
         if first_z<last_z: #(mode=="begin" and first_z<last_z) or (mode=="end" and first_z>last_z) :
             returned=returned.iloc[::-1]
             
-        returned[cum_field_name]=returned[x_field].cumsum()-first_x
+        returned[cumul_field_name]=returned[x_field].cumsum()-first_x
     #print(returned)
     return returned
     """
@@ -217,7 +219,7 @@ def get_offset(p_pnd, p_dist_field):
         returned=last[p_dist_field]
     return returned
 
-def concatenate_df(df_1, df_2,  cum_field, field_length, name_field, treshold_alt=False, z_field="", treshold_elevation=0):    
+def concatenate_df(df_1, df_2,  cumul_field, field_length, name_field, treshold_alt=False, z_field="", treshold_elevation=0):    
     last=df_1.iloc[-1]
     first=df_2.iloc[0]
     last_df2=df_2.iloc[-1]
@@ -231,15 +233,15 @@ def concatenate_df(df_1, df_2,  cum_field, field_length, name_field, treshold_al
     print("distance2=")
     print(distance2)
     if distance2 < distance1:
-        len_cum=df_2[cum_field].max()
-        df_2[cum_field]=abs(df_2[cum_field]-len_cum)
+        len_cum=df_2[cumul_field].max()
+        df_2[cumul_field]=abs(df_2[cumul_field]-len_cum)
         df_2=df_2.iloc[::-1]
-        df_2=df_2.sort_values(by=[cum_field], ascending=True)    
+        df_2=df_2.sort_values(by=[cumul_field], ascending=True)    
     
     
     last[name_field]=first[name_field]
-    offset=last[cum_field]+last[field_length]
-    df_2[cum_field]=df_2[cum_field]+offset
+    offset=last[cumul_field]+last[field_length]
+    df_2[cumul_field]=df_2[cumul_field]+offset
     df_2.iloc[-1]=last
     if treshold_alt:
         #df_2.loc[df_2[z_field]<last[z_field], z_field]=last[z_field]
@@ -247,27 +249,31 @@ def concatenate_df(df_1, df_2,  cum_field, field_length, name_field, treshold_al
         df_2.loc[df_2[z_field]<treshold_elevation, z_field]=treshold_elevation
     df_2.index = df_2.index + 1  # shifting index
     tmp=pnd.concat([df_1, df_2], axis=0, ignore_index=True)
-    tmp=tmp.sort_values(by=[cum_field], ascending=True)
+    tmp=tmp.sort_values(by=[cumul_field], ascending=True)
     return tmp
     
 def go():
-    df1=handle_river(ORIGINAL_FILE_1, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    df2=handle_river(ORIGINAL_FILE_2, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    df3=handle_river(ORIGINAL_FILE_3, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUM_FIELD, RASTER)
-    merged_1=handle_frame(df1, FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_1, True, 'DarkBlue', "begin")
-    merged_2=handle_frame(df2,  FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_2, False, 'Black', "end")
-    merged_3=handle_frame(df3, FIELD_ALT_1,  CUM_FIELD, FIELD_NAME, NAME_3, True, 'Red',  "end")
-    merged_2=concatenate_df(merged_1, merged_2, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME, True, FIELD_ALT_1, min(merged_1[FIELD_ALT_1].max(),merged_3[FIELD_ALT_1].max()))    
-    df_final=concatenate_df(merged_2, merged_3, CUM_FIELD, FIELD_LENGTH_1, FIELD_NAME)
+    df1=handle_river(ORIGINAL_FILE_1, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUMUL_FIELD, RASTER)
+    df2=handle_river(ORIGINAL_FILE_2, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUMUL_FIELD, RASTER)
+    df3=handle_river(ORIGINAL_FILE_3, CRS, LEN_SEG, FIELD_LENGTH_1,  FIELD_ALT_1, FIELD_ALT_1_END, CUMUL_FIELD, RASTER)
+    merged_1=handle_frame(df1, FIELD_ALT_1,  CUMUL_FIELD, FIELD_NAME, NAME_1, True, 'DarkBlue', "begin")
+    #center_distance=merged_1[CUMUL_FIELD].max()
+    merged_2=handle_frame(df2,  FIELD_ALT_1,  CUMUL_FIELD, FIELD_NAME, NAME_2, False, 'Black', "end")
+    merged_3=handle_frame(df3, FIELD_ALT_1,  CUMUL_FIELD, FIELD_NAME, NAME_3, True, 'Red',  "end")
+    merged_2=concatenate_df(merged_1, merged_2, CUMUL_FIELD, FIELD_LENGTH_1, FIELD_NAME, True, FIELD_ALT_1, min(merged_1[FIELD_ALT_1].max(),merged_3[FIELD_ALT_1].max()))    
+    df_final=concatenate_df(merged_2, merged_3, CUMUL_FIELD, FIELD_LENGTH_1, FIELD_NAME)
     print(df_final)
+    center_distance=df_final.iloc[df_final[FIELD_ALT_1].argmax()][CUMUL_FIELD]
+    df_final[CUMUL_FIELD]=df_final[CUMUL_FIELD]-center_distance
+    df_final=df_final.sort_values(by=[CUMUL_FIELD], ascending=True)
     first=df_final[df_final[FIELD_NAME]==NAME_1]
     second=df_final[df_final[FIELD_NAME]==NAME_2]
     third=df_final[df_final[FIELD_NAME]==NAME_3]
     
     fig_final, ax_final = plt.subplots()
-    ax_final.plot(first[CUM_FIELD], first[FIELD_ALT_1], label=NAME_1, c="DarkBlue")
-    ax_final.plot(second[CUM_FIELD], second[FIELD_ALT_1], label=NAME_2, c="Black", linestyle="dashed")
-    ax_final.plot(third[CUM_FIELD], third[FIELD_ALT_1], label=NAME_3, c="Red")
+    ax_final.plot(first[CUMUL_FIELD], first[FIELD_ALT_1], label=NAME_1, c="DarkBlue")
+    ax_final.plot(second[CUMUL_FIELD], second[FIELD_ALT_1], label=NAME_2, c="Black", linestyle="dashed")
+    ax_final.plot(third[CUMUL_FIELD], third[FIELD_ALT_1], label=NAME_3, c="Red")
     plt.xlabel("Distance on map (m)")
     plt.ylabel("Elevation (m)")
     plt.legend(loc="best")
@@ -277,5 +283,6 @@ def go():
     last_x=round(df_final.iloc[-1]["x_end"],4)
     last_y=round(df_final.iloc[-1]["y_end"],4)
     plt.figtext(0.5, 0.01, "Begin : lat "+str(first_x)+" lon"+str(first_y)+" "+"End : lat "+str(last_x)+" lon"+str(last_y), ha="center")
+    plt.ylim(PLOT_Y_MIN, PLOT_Y_MAX)
     plt.show()
 go()
