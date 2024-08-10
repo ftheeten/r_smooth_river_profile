@@ -6,7 +6,6 @@ import rioxarray as rxr
 from pyproj import Proj, transform, CRS, Transformer
 import os
 import pandas as pnd
-import pandas as pnd
 import matplotlib.pyplot as plt
 from pygam import LinearGAM, s
 import traceback
@@ -18,9 +17,21 @@ os.environ["PROJ_LIB"]="C:\\OSGeo4W\\share\\proj"
 
 
 #ORIGINAL_FILE="D:\\DivaGisData\\CongoBrazza_Fleur\\affluent_intermediaire_sud.gpkg"
+"""
 ORIGINAL_FILE_1="C:\\DEV\\CongoBrazza_Fleur\\intermediaire_sud_altitude_1000m.gpkg"
 ORIGINAL_FILE_2="C:\\DEV\\CongoBrazza_Fleur\\passage_fleur_no_2.gpkg"
 ORIGINAL_FILE_3="C:\\DEV\\CongoBrazza_Fleur\\intermediaire_nord_altitude_1000m.gpkg"
+"""
+"""
+ORIGINAL_FILE_1="C:\\DEV\\CongoBrazza_Fleur\\passage_est_affluent_ndoue.gpkg"
+ORIGINAL_FILE_2="C:\\DEV\\CongoBrazza_Fleur\\passage_fleur_no_3.gpkg"
+ORIGINAL_FILE_3="C:\\DEV\\CongoBrazza_Fleur\\passage_3_affluent_n_lefini_100m_altitude.gpkg"
+"""
+
+ORIGINAL_FILE_1="C:\\DEV\\CongoBrazza_Fleur\\makou_sud_dissolved.gpkg"
+ORIGINAL_FILE_2="C:\\DEV\\CongoBrazza_Fleur\\passage_fleur_no_1.gpkg"
+ORIGINAL_FILE_3="C:\\DEV\\CongoBrazza_Fleur\\makou_nord_altitude_100m.gpkg"
+
 RASTER="C:\\DEV\\CongoBrazza_Fleur\\fusion_s03E014s04e014_lefini_kouilou.tif"
 CRS=32733
 LEN_SEG=100
@@ -33,7 +44,9 @@ NAME_1="Affluent Ndoue"
 NAME_2="Water divide"
 NAME_3="Affluent Lefini"
 CUMUL_FIELD='DIST_SURF'
-TITLE="Profile line b"
+#TITLE="Profile central zone"
+#TITLE="Profile South-East zone"
+TITLE="Profile North-West zone"
 PLOT_Y_MIN=400
 PLOT_Y_MAX=800
 
